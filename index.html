@@ -4,7 +4,7 @@
 <head>
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width,initial-scale=1">
-<title>UD Full Body Candle Hunter V6</title>
+<title>UD Full Body Candle Hunter V7</title>
 <style>
 :root{--bg:#080f20;--panel:#141f35;--line:#293a5b;--txt:#e9efff;--muted:#9eacc7;--green:#22c99a;--red:#ff6685;--amber:#ffd16a}
 *{box-sizing:border-box}
@@ -26,10 +26,10 @@ select,button{width:100%;padding:12px;border-radius:9px;background:#243654;color
 .section{margin-top:16px}
 .cards{display:grid;grid-template-columns:repeat(auto-fit,minmax(260px,1fr));gap:10px}
 .coin{background:#0d172b;border:1px solid var(--line);border-radius:12px;padding:13px}
-.coinTop{display:flex;justify-content:space-between;font-weight:750}
-.pill{border-radius:20px;padding:5px 9px;font-size:11px;font-weight:800}
+.coinTop{display:flex;justify-content:space-between;gap:8px;font-weight:750}
+.pill{border-radius:20px;padding:5px 9px;font-size:11px;font-weight:800;white-space:nowrap}
 .buy{background:#123f3a;color:#65e8c4}.sell{background:#4a2030;color:#ff91a8}
-.meta,.reason{font-size:13px;line-height:1.55;margin-top:8px}
+.meta,.reason{font-size:13px;line-height:1.65;margin-top:8px}
 .empty{color:var(--muted);padding:12px}
 .diag{display:grid;grid-template-columns:repeat(2,1fr);gap:8px}
 .diag div{background:#0d172b;padding:9px;border-radius:9px;color:var(--muted);font-size:13px}
@@ -41,21 +41,21 @@ select,button{width:100%;padding:12px;border-radius:9px;background:#243654;color
 <body>
 <div class="wrap">
 <header>
-<h1>UD Full Body Candle Hunter V6 · CoinDCX Early Ignition Guard</h1>
+<h1>UD Full Body Candle Hunter V7 · Early Reversal Guard</h1>
 <div class="sub">CoinDCX USDT perpetual futures · 5M / 15M</div>
 </header>
 
 <div class="controls">
 <div class="field"><label>Coin universe</label><select id="universe"><option value="100">Top 100 altcoins</option><option value="500">Top 500 altcoins</option><option value="1000" selected>Top 1000 altcoins</option><option value="all">All active altcoins</option></select></div>
 <div class="field"><label>Timeframe</label><select id="tf"><option value="5">5 minutes</option><option value="15">15 minutes</option><option value="both" selected>Both 5M + 15M</option></select></div>
-<div class="field"><label>Refresh interval</label><select id="refresh"><option value="5">5 minutes</option><option value="10">10 minutes</option><option value="15" selected>15 minutes</option></select></div>
+<div class="field"><label>Refresh interval</label><select id="refresh"><option value="1">1 minute</option><option value="3">3 minutes</option><option value="5" selected>5 minutes</option><option value="15">15 minutes</option></select></div>
 <div class="field"><label>Liquidity protection</label><select id="strict"><option value="strict" selected>Strict</option><option value="very">Very strict</option></select></div>
 </div>
 
 <div class="actions"><button class="start" id="start">▶ Start scanner</button><button class="stop" id="stop">■ Stop</button></div>
 <div class="status" id="status">Ready · Scanner stopped</div>
 
-<div class="notice"><b>Early ignition + strict trap guard:</b> EARLY WATCH looks for compression or pre-break pressure, rising volume, directional candle pressure and trend/momentum alignment. CONFIRMED appears only after a large candle closes with a very small combined wick. Opposing liquidity sweeps, nearby support/resistance, weak order-book pressure, wide spread and thin depth block signals. EARLY is a heads-up, not an entry command. No scanner can guarantee a move or eliminate every trap.</div>
+<div class="notice"><b>Early reversal + strict trap guard:</b> Scanner Stochastic RSI rollover, RSI rollover and MACD momentum rollover ko identify karta hai. BUY/SELL tabhi show hoga jab teeno indicators align hon aur liquidity, spread, order-book aur nearby support/resistance filters pass hon. Signal rollover confirm hone par aata hai, exact turning-point price par guarantee nahi hoti.</div>
 
 <div class="grid">
 <div class="stat"><small>Pairs scanned</small><b id="scanned">0</b></div>
@@ -64,55 +64,45 @@ select,button{width:100%;padding:12px;border-radius:9px;background:#243654;color
 <div class="stat"><small>Data errors</small><b id="errors">0</b></div>
 </div>
 
-<div class="section"><h2>EARLY WATCH — pre-ignition</h2><div class="cards" id="earlyCards"><div class="empty">No early setups yet.</div></div></div>
-<div class="section"><h2>CONFIRMED — large full-body candle closed</h2><div class="cards" id="confirmedCards"><div class="empty">No confirmed candles yet.</div></div></div>
+<div class="section"><h2>EARLY WATCH — indicator rollover</h2><div class="cards" id="earlyCards"><div class="empty">No early setups yet.</div></div></div>
+<div class="section"><h2>CONFIRMED — rollover + candle confirmation</h2><div class="cards" id="confirmedCards"><div class="empty">No confirmed setups yet.</div></div></div>
 <div class="section"><h2>Scan diagnostics</h2><div class="diag" id="diagnostics"><div>Waiting for first scan…</div></div><div class="meta" id="errorDetails">Individual API errors will be listed here.</div></div>
 
-<div class="foot">V6 scanner. Data: CoinDCX public USDT futures endpoints through the same-origin proxy. No API key and no order placement. Major coins and stablecoin bases are excluded. Keep this page open while scanning.</div>
+<div class="foot">CoinDCX public USDT futures data through same-origin proxy. No API key and no order placement. Major coins and stablecoin bases are excluded. Keep this page open while scanning.</div>
 </div>
 
 <script>
 const API='/api/coindcx';
 let running=false,timer=null,busy=false;
 let requestQueue=Promise.resolve(),lastRequestAt=0;
-let gateStats={rawEarly:0,rawConfirmed:0,liquidityRejected:0,bookErrors:0,levelVeto:0,momentumVeto:0};
-const errorCounts={network:0,rateLimit:0,http:0,api:0,other:0};
 const $=id=>document.getElementById(id);
 const excluded=new Set(['BTC','ETH','SOL','XRP','BNB','DOGE','ADA','TRX','TON','LINK','AVAX','DOT','LTC','BCH','ETC','MATIC','POL','SHIB','USDC','USDE','USDT','DAI','FDUSD','TUSD','USDD','BUSD','EUR','GBP']);
-let errorSamples=[];
+let errors=0,errorSamples=[],stats={raw:0,liquidity:0,level:0,indicator:0};
 
-async function paceRequest(){
+async function pace(){
  let release;const previous=requestQueue;
- requestQueue=new Promise(resolve=>release=resolve);
+ requestQueue=new Promise(r=>release=r);
  await previous;
- const wait=Math.max(0,120-(Date.now()-lastRequestAt));
+ const wait=Math.max(0,130-(Date.now()-lastRequestAt));
  if(wait)await new Promise(r=>setTimeout(r,wait));
  lastRequestAt=Date.now();release();
 }
-function classifyError(message){
- const m=String(message).toLowerCase();
- if(m.includes('too many')||m.includes('rate limit')||m.includes('429'))return 'rateLimit';
- if(m.includes('http '))return 'http';
- if(m.includes('failed to fetch')||m.includes('network')||m.includes('abort')||m.includes('timeout'))return 'network';
- if(m.includes('coindcx')||m.includes('invalid')||m.includes('empty'))return 'api';
- return 'other';
-}
-async function getJSON(url,timeout=18000){
- let lastErr;
- for(let attempt=0;attempt<3;attempt++){
-  await paceRequest();
-  const ctl=new AbortController(),tm=setTimeout(()=>ctl.abort(),timeout);
+async function getJSON(url){
+ let last;
+ for(let i=0;i<3;i++){
+  await pace();
+  const ctl=new AbortController(),tm=setTimeout(()=>ctl.abort(),18000);
   try{
    const r=await fetch(url,{signal:ctl.signal,cache:'no-store'});
    if(!r.ok)throw Error('HTTP '+r.status+' '+url);
    return await r.json();
   }catch(e){
-   lastErr=e;const kind=classifyError(e.message);
-   if(attempt===2){errorCounts[kind]=(errorCounts[kind]||0)+1;throw e;}
-   await new Promise(r=>setTimeout(r,(kind==='rateLimit'?1200:500)*(attempt+1)));
+   last=e;
+   if(i===2)throw e;
+   await new Promise(r=>setTimeout(r,500*(i+1)));
   }finally{clearTimeout(tm);}
  }
- throw lastErr||Error('Unknown CoinDCX API error');
+ throw last;
 }
 async function universe(){
  const raw=await getJSON(API+'/exchange/v1/derivatives/futures/data/active_instruments?margin_currency_short_name[]=USDT');
@@ -120,135 +110,209 @@ async function universe(){
  const valid=pairs.map(x=>typeof x==='string'?x:(x.pair||x.instrument||'')).filter(x=>/^B-[A-Z0-9]+_USDT$/.test(x));
  const px=await getJSON(API+'/market_data/v3/current_prices/futures/rt');
  const prices=px.prices||{};
- return valid.map(pair=>{
-  const base=pair.replace(/^B-/,'').replace(/_USDT$/,'');
-  const t=prices[pair]||{};
-  return{symbol:pair,baseCoin:base,t,turnover:+(t.v||0)};
- }).filter(x=>!excluded.has(x.baseCoin)&&x.turnover>0&&Number.isFinite(+x.t.ls)).sort((a,b)=>b.turnover-a.turnover);
+ return valid.map(symbol=>{
+  const base=symbol.replace(/^B-/,'').replace(/_USDT$/,'');
+  const t=prices[symbol]||{};
+  return{symbol,base,t,turnover:+(t.v||0)};
+ }).filter(x=>!excluded.has(x.base)&&x.turnover>0).sort((a,b)=>b.turnover-a.turnover);
 }
-function normalizeCandle(x){
+function normalize(x){
  return{time:+(x.time??x.open_time??x.t??0),open:+(x.open??x.o),high:+(x.high??x.h),low:+(x.low??x.l),close:+(x.close??x.c),volume:+(x.volume??x.v??0)};
 }
 async function candles(pair,tf){
  const now=Math.floor(Date.now()/1000);
- const from=now-(tf===5?5:15)*60*110;
+ const from=now-tf*60*120;
  const url=API+'/market_data/v3/klines/'+encodeURIComponent(pair)+'-futures?interval='+tf+'m&startTime='+from+'&endTime='+now;
  const raw=await getJSON(url);
  const rows=Array.isArray(raw)?raw:(raw.data||raw.candles||[]);
- return rows.map(normalizeCandle).filter(x=>x.open>0&&x.high>0&&x.low>0&&x.close>0&&x.volume>=0).sort((a,b)=>a.time-b.time);
+ return rows.map(normalize).filter(x=>x.open>0&&x.high>0&&x.low>0&&x.close>0).sort((a,b)=>a.time-b.time);
 }
-function avg(a){return a.length?a.reduce((s,x)=>s+x,0)/a.length:0;}
+function avg(a){return a.length?a.reduce((s,x)=>s+x,0)/a.length:0}
 function ema(values,n){
- const k=2/(n+1);let out=values[0]||0;
- for(let i=1;i<values.length;i++)out=values[i]*k+out*(1-k);
+ if(!values.length)return [];
+ const k=2/(n+1),out=[values[0]];
+ for(let i=1;i<values.length;i++)out.push(values[i]*k+out[i-1]*(1-k));
  return out;
 }
-function rsi(values,n=14){
- if(values.length<n+1)return 50;
+function rsiSeries(values,n=14){
+ const out=Array(values.length).fill(50);
+ if(values.length<=n)return out;
  let gain=0,loss=0;
- for(let i=values.length-n;i<values.length;i++){
-  const d=values[i]-values[i-1];if(d>0)gain+=d;else loss-=d;
+ for(let i=1;i<=n;i++){
+  const d=values[i]-values[i-1];
+  if(d>0)gain+=d;else loss-=d;
  }
- if(loss===0)return 100;
- return 100-100/(1+gain/loss);
+ let ag=gain/n,al=loss/n;
+ out[n]=al===0?100:100-100/(1+ag/al);
+ for(let i=n+1;i<values.length;i++){
+  const d=values[i]-values[i-1];
+  ag=(ag*(n-1)+Math.max(d,0))/n;
+  al=(al*(n-1)+Math.max(-d,0))/n;
+  out[i]=al===0?100:100-100/(1+ag/al);
+ }
+ return out;
 }
-function analyze(rows,tf){
- if(rows.length<40)throw Error('Insufficient candle history');
+function stochasticRSI(rsi,n=14,smooth=3){
+ const raw=Array(rsi.length).fill(50);
+ for(let i=n;i<rsi.length;i++){
+  const w=rsi.slice(i-n+1,i+1),lo=Math.min(...w),hi=Math.max(...w);
+  raw[i]=hi===lo?50:100*(rsi[i]-lo)/(hi-lo);
+ }
+ const k=raw.map((_,i)=>avg(raw.slice(Math.max(0,i-smooth+1),i+1)));
+ const d=k.map((_,i)=>avg(k.slice(Math.max(0,i-smooth+1),i+1)));
+ return{k,d};
+}
+function macd(values){
+ const e12=ema(values,12),e26=ema(values,26);
+ const line=values.map((_,i)=>e12[i]-e26[i]);
+ const signal=ema(line,9);
+ const hist=line.map((v,i)=>v-signal[i]);
+ return{line,signal,hist};
+}
+function rising(a){return a[a.length-1]>a[a.length-2]}
+function falling(a){return a[a.length-1]<a[a.length-2]}
+function analyze(rows){
+ if(rows.length<60)throw Error('Insufficient candle history');
  const closed=rows.slice(0,-1),live=rows[rows.length-1];
- const last=closed[closed.length-1],prev=closed[closed.length-2];
  const closes=closed.map(x=>x.close),vols=closed.map(x=>x.volume);
- const ranges=closed.map(x=>x.high-x.low);
- const atr=avg(ranges.slice(-14));
- const body=Math.abs(last.close-last.open),span=Math.max(last.high-last.low,1e-9);
- const bodyPct=body/span,wick=1-bodyPct;
- const volAvg=avg(vols.slice(-20)),volRatio=last.volume/(volAvg||1e-9);
- const liveBody=Math.abs(live.close-live.open),liveSpan=Math.max(live.high-live.low,1e-9);
- const liveBodyPct=liveBody/liveSpan;
- const liveVolAvg=avg(vols.slice(-20)),volPace=live.volume/(liveVolAvg||1e-9);
- const trend=ema(closes.slice(-50),20)>ema(closes.slice(-50),50)?'UP':'DOWN';
- const liveDir=live.close>live.open?'BUY':live.close<live.open?'SELL':'NEUTRAL';
- const closedDir=last.close>last.open?'BUY':last.close<last.open?'SELL':'NEUTRAL';
- const momentum=rsi(closes);
- const priorHigh=Math.max(...closed.slice(-20,-1).map(x=>x.high));
- const priorLow=Math.min(...closed.slice(-20,-1).map(x=>x.low));
- const compression=atr>0&&avg(ranges.slice(-5))<atr*0.85;
- const closeAtExtreme=liveDir==='BUY'?(live.high-live.close)/liveSpan<.18:(live.close-live.low)/liveSpan<.18;
- const trendOK=(liveDir==='BUY'&&trend==='UP'&&momentum>52)||(liveDir==='SELL'&&trend==='DOWN'&&momentum<48);
- const pressure=liveBodyPct>.65&&volPace>1.15;
- const preBreak=(liveDir==='BUY'&&live.close>priorHigh*.998)||(liveDir==='SELL'&&live.close<priorLow*1.002);
- const early=liveDir!=='NEUTRAL'&&trendOK&&pressure&&closeAtExtreme&&(compression||preBreak);
- const confirmed=closedDir!=='NEUTRAL'&&((closedDir==='BUY'&&trend==='UP'&&momentum>52)||(closedDir==='SELL'&&trend==='DOWN'&&momentum<48))&&bodyPct>=.88&&wick<=.08&&body/(atr||1e-9)>=1.10&&volRatio>=1.8;
- return{trend,liveDir,live,last,early,confirmed,bodyPct,wick,volRatio,bodyAtr:body/(atr||1e-9),volPace,liveBodyPct,momentum,compression,closeAtExtreme,preBreak};
+ const rsiV=rsiSeries(closes),st=stochasticRSI(rsiV),mc=macd(closes);
+ const i=closes.length-1;
+ const k=st.k,d=st.d,rv=rsiV,h=mc.hist,ml=mc.line;
+ const last=closed[i],prev=closed[i-1],prev2=closed[i-2];
+ const stTurnDown=k[i]<k[i-1]&&k[i-1]>=k[i-2]&&k[i-1]>65&&k[i-1]<95&&k[i]<d[i];
+ const stTurnUp=k[i]>k[i-1]&&k[i-1]<=k[i-2]&&k[i-1]<35&&k[i-1]>5&&k[i]>d[i];
+ const rsiTurnDown=rv[i]<rv[i-1]&&rv[i-1]>=rv[i-2]&&rv[i-1]>=50&&rv[i-1]<=70;
+ const rsiTurnUp=rv[i]>rv[i-1]&&rv[i-1]<=rv[i-2]&&rv[i-1]>=30&&rv[i-1]<=50;
+ const macdTurnDown=h[i]<h[i-1]&&h[i-1]>=h[i-2]&&ml[i]<ml[i-1];
+ const macdTurnUp=h[i]>h[i-1]&&h[i-1]<=h[i-2]&&ml[i]>ml[i-1];
+ const sell=stTurnDown&&rsiTurnDown&&macdTurnDown;
+ const buy=stTurnUp&&rsiTurnUp&&macdTurnUp;
+ const direction=buy?'BUY':sell?'SELL':null;
+ const trendFast=ema(closes.slice(-50),9).at(-1);
+ const trendSlow=ema(closes.slice(-50),21).at(-1);
+ const trend=trendFast>trendSlow?'UP':'DOWN';
+ const volumeAvg=avg(vols.slice(-20));
+ const volumeRatio=last.volume/(volumeAvg||1e-9);
+ const range=Math.max(last.high-last.low,1e-9);
+ const body=Math.abs(last.close-last.open)/range;
+ const candleDir=last.close>last.open?'BUY':last.close<last.open?'SELL':'NONE';
+ const liveDir=live.close>live.open?'BUY':live.close<live.open?'SELL':'NONE';
+ const priorHigh=Math.max(...closed.slice(-21,-1).map(x=>x.high));
+ const priorLow=Math.min(...closed.slice(-21,-1).map(x=>x.low));
+ const nearResistance=(priorHigh-last.close)/last.close*100;
+ const nearSupport=(last.close-priorLow)/last.close*100;
+ const opposingLevel=direction==='SELL'?nearSupport<0.35:nearResistance<0.35;
+ const trendAligned=direction==='BUY'?trend==='UP':direction==='SELL'?trend==='DOWN':false;
+ const candleAligned=direction===candleDir;
+ const early=!!direction;
+ const confirmed=early&&trendAligned&&candleAligned&&body>=0.55&&volumeRatio>=1.05;
+ return{direction,early,confirmed,trend,trendAligned,candleAligned,body,volumeRatio,
+ stoch:k[i],stochPrev:k[i-1],rsi:rv[i],rsiPrev:rv[i-1],
+ macdHist:h[i],macdPrev:h[i-1],live, last,opposingLevel,
+ nearSupport,nearResistance,volumeAvg};
 }
-async function book(symbol,dir,very,isEarly=false){
+async function orderbook(symbol,dir,very){
  async function snap(){
   const d=await getJSON(API+'/market_data/v3/orderbook/'+encodeURIComponent(symbol)+'-futures/50');
   const bids=Object.entries(d.bids||{}).map(([p,q])=>[+p,+q]).sort((a,b)=>b[0]-a[0]);
   const asks=Object.entries(d.asks||{}).map(([p,q])=>[+p,+q]).sort((a,b)=>a[0]-b[0]);
-  if(!bids.length||!asks.length)throw Error('CoinDCX order book empty');
-  const bp=bids[0][0],ap=asks[0][0],mid=(ap+bp)/2,spread=(ap-bp)/mid*100;
-  const bd=bids.slice(0,10).reduce((s,x)=>s+x[0]*x[1],0),ad=asks.slice(0,10).reduce((s,x)=>s+x[0]*x[1],0);
+  if(!bids.length||!asks.length)throw Error('Empty order book');
+  const bp=bids[0][0],ap=asks[0][0],mid=(ap+bp)/2;
+  const spread=(ap-bp)/mid*100;
+  const bd=bids.slice(0,10).reduce((s,x)=>s+x[0]*x[1],0);
+  const ad=asks.slice(0,10).reduce((s,x)=>s+x[0]*x[1],0);
   return{spread,bd,ad,ratio:bd/(ad||1)};
  }
- const a=await snap();await new Promise(r=>setTimeout(r,650));const z=await snap();
- const min=isEarly?(very?2500:1000):(very?8000:2500);
- const threshold=isEarly?(very?1.18:1.08):(very?1.35:1.22);
- const aligned=dir==='BUY'?a.ratio>=threshold&&z.ratio>=threshold:a.ratio<=1/threshold&&z.ratio<=1/threshold;
- const stable=Math.abs(a.ratio-z.ratio)<=Math.max(isEarly?.45:.35,Math.abs(a.ratio)*(isEarly?.40:.30));
- const depthOK=Math.min(a.bd,z.bd)>=min&&Math.min(a.ad,z.ad)>=min;
- const spreadOK=Math.max(a.spread,z.spread)<=(isEarly?(very?.10:.15):(very?.07:.10));
- return{ok:aligned&&stable&&depthOK&&spreadOK,spread:Math.max(a.spread,z.spread),bd:Math.min(a.bd,z.bd),ad:Math.min(a.ad,z.ad),ratio:z.ratio,aligned,stable,depthOK,spreadOK};
+ const a=await snap();await new Promise(r=>setTimeout(r,500));const b=await snap();
+ const threshold=very?1.3:1.15;
+ const aligned=dir==='BUY'?a.ratio>threshold&&b.ratio>threshold:a.ratio<1/threshold&&b.ratio<1/threshold;
+ const stable=Math.abs(a.ratio-b.ratio)<Math.max(.35,Math.abs(a.ratio)*.35);
+ const depth=Math.min(a.bd,a.ad,b.bd,b.ad)>(very?5000:1500);
+ const spread=Math.max(a.spread,b.spread)<(very?.08:.15);
+ return{ok:aligned&&stable&&depth&&spread,spread:Math.max(a.spread,b.spread),ratio:b.ratio,depth,stable,aligned};
+}
+function card(x,type){
+ const dir=x.a.direction,cls=dir==='BUY'?'buy':'sell';
+ return `<article class="coin">
+ <div class="coinTop"><span>${x.symbol}</span><span class="pill ${cls}">${type} · ${dir}</span></div>
+ <div class="meta">${x.tf}M · Price: ${x.a.last.close}<br>
+ Stoch RSI: ${x.a.stoch.toFixed(1)} · RSI: ${x.a.rsi.toFixed(1)}<br>
+ MACD histogram: ${x.a.macdHist.toFixed(6)}<br>
+ Trend: ${x.a.trend} · Volume: ${x.a.volumeRatio.toFixed(2)}×<br>
+ Spread: ${x.b.spread.toFixed(3)}% · Book ratio: ${x.b.ratio.toFixed(2)}</div>
+ <div class="reason">${type==='EARLY'?'Three indicators have started turning together. Wait for price confirmation.':'Indicator rollover, candle direction and liquidity checks passed.'}</div>
+ </article>`;
 }
 async function pool(items,limit,fn){
- let next=0,done=0,errors=0;
+ let next=0,done=0,fail=0;
  const workers=Array.from({length:limit},async()=>{
   while(next<items.length&&running){
    const item=items[next++];
-   try{await fn(item)}catch(e){errors++;if(errorSamples.length<8)errorSamples.push(item.c.symbol+' '+item.tf+'m: '+e.message);}
+   try{await fn(item)}catch(e){
+    fail++;errors++;
+    if(errorSamples.length<8)errorSamples.push(item.c.symbol+' '+item.tf+'m: '+e.message);
+   }
    done++;$('scanned').textContent=done;$('errors').textContent=errors;
   }
  });
- await Promise.all(workers);return{done,errors};
-}
-function renderCard(x,type){
- const a=x.a,b=x.b,dir=x.dir,cls=dir==='BUY'?'buy':'sell';
- return `<article class="coin"><div class="coinTop"><span>${x.symbol}</span><span class="pill ${cls}">${type} · ${dir}</span></div><div class="meta">${x.tf}M · Price: ${type==='EARLY'?a.live.close:a.last.close}<br>Body: ${((type==='EARLY'?a.liveBodyPct:a.bodyPct)*100).toFixed(0)}% · Volume: ${(type==='EARLY'?a.volPace:a.volRatio).toFixed(2)}×<br>Trend: ${a.trend} · RSI: ${a.momentum.toFixed(1)}<br>Spread: ${b.spread.toFixed(3)}% · Book ratio: ${b.ratio.toFixed(2)}</div><div class="reason">${x.reason}</div></article>`;
+ await Promise.all(workers);return{done,fail};
 }
 async function scan(){
- if(busy||!running)return;busy=true;errorSamples=[];
- for(const k of Object.keys(errorCounts))errorCounts[k]=0;
- let early=[],confirmed=[],blocked=[];
+ if(busy||!running)return;
+ busy=true;errors=0;errorSamples=[];stats={raw:0,liquidity:0,level:0,indicator:0};
+ const early=[],confirmed=[];
  try{
-  $('status').textContent='Loading CoinDCX active USDT perpetual pairs…';
-  const all=await universe(),limit=$('universe').value,chosen=limit==='all'?all:all.slice(0,+limit);
-  const tfs=$('tf').value==='both'?[5,15]:[+$('tf').value],jobs=[];
+  $('status').textContent='Loading CoinDCX futures universe…';
+  const all=await universe(),limit=$('universe').value;
+  const chosen=limit==='all'?all:all.slice(0,+limit);
+  const tfs=$('tf').value==='both'?[5,15]:[+$('tf').value];
+  const jobs=[];
   for(const c of chosen)for(const tf of tfs)jobs.push({c,tf});
-  $('status').textContent=`CoinDCX universe: ${all.length} active altcoin pairs · checking ${chosen.length} pairs`;
+  $('status').textContent=`Checking ${chosen.length} CoinDCX pairs…`;
   const result=await pool(jobs,3,async job=>{
-   const rows=await candles(job.c.symbol,job.tf),a=analyze(rows,job.tf);
-   if(a.early)gateStats.rawEarly++;if(a.confirmed)gateStats.rawConfirmed++;
-   if(!a.early&&!a.confirmed)return;
-   const isEarly=a.early,dir=isEarly?a.liveDir:(a.last.close>a.last.open?'BUY':'SELL');
-   const b=await book(job.c.symbol,dir,$('strict').value==='very',isEarly);
-   if(!b.ok){gateStats.liquidityRejected++;return;}
-   const item={symbol:job.c.symbol,tf:job.tf,a,b,dir,reason:isEarly?'Pre-ignition watch only; confirmation candle has not closed.':'Large closed candle passed the full-body and liquidity checks.'};
-   if(isEarly)early.push(item);else confirmed.push(item);
+   const rows=await candles(job.c.symbol,job.tf);
+   const a=analyze(rows);
+   if(!a.early)return;
+   stats.raw++;
+   if(a.opposingLevel){stats.level++;return;}
+   const b=await orderbook(job.c.symbol,a.direction,$('strict').value==='very');
+   if(!b.ok){stats.liquidity++;return;}
+   const item={symbol:job.c.symbol,tf:job.tf,a,b};
+   if(a.confirmed)confirmed.push(item);else early.push(item);
   });
-  $('early').textContent=early.length;$('confirmed').textContent=confirmed.length;
-  $('earlyCards').innerHTML=early.length?early.map(x=>renderCard(x,'EARLY WATCH')).join(''):'<div class="empty">No early setups passed all filters.</div>';
-  $('confirmedCards').innerHTML=confirmed.length?confirmed.map(x=>renderCard(x,'CONFIRMED')).join(''):'<div class="empty">No closed candle passed all filters.</div>';
-  $('diagnostics').innerHTML=`<div>Eligible universe: <b>${all.length}</b></div><div>Checks completed: <b>${result.done}</b></div><div>Raw early candidates: <b>${gateStats.rawEarly}</b></div><div>Raw confirmed candidates: <b>${gateStats.rawConfirmed}</b></div><div>Liquidity rejected: <b>${gateStats.liquidityRejected}</b></div><div>Final early: <b>${early.length}</b></div><div>Final confirmed: <b>${confirmed.length}</b></div><div>Data errors: <b>${result.errors}</b></div>`;
-  $('errorDetails').textContent='Network: '+errorCounts.network+' · Rate limits: '+errorCounts.rateLimit+' · HTTP: '+errorCounts.http+' · API: '+errorCounts.api+' · Other: '+errorCounts.other+' '+errorSamples.join(' | ');
-  $('status').textContent=`Updated ${new Date().toLocaleTimeString()} · ${chosen.length} pairs · ${result.done} checks · ${early.length} early · ${confirmed.length} confirmed`;
- }catch(e){$('status').textContent='Scan failed: '+e.message;$('errorDetails').textContent=e.message;}
- finally{busy=false;}
+  $('early').textContent=early.length;
+  $('confirmed').textContent=confirmed.length;
+  $('earlyCards').innerHTML=early.length?early.map(x=>card(x,'EARLY WATCH')).join(''):'<div class="empty">No early setups passed all filters.</div>';
+  $('confirmedCards').innerHTML=confirmed.length?confirmed.map(x=>card(x,'CONFIRMED')).join(''):'<div class="empty">No confirmed setups yet.</div>';
+  $('diagnostics').innerHTML=
+   `<div>Eligible pairs: <b>${all.length}</b></div>
+    <div>Checks completed: <b>${result.done}</b></div>
+    <div>Indicator candidates: <b>${stats.raw}</b></div>
+    <div>Nearby level rejected: <b>${stats.level}</b></div>
+    <div>Liquidity rejected: <b>${stats.liquidity}</b></div>
+    <div>Early watch: <b>${early.length}</b></div>
+    <div>Confirmed: <b>${confirmed.length}</b></div>
+    <div>Data errors: <b>${errors}</b></div>`;
+  $('errorDetails').textContent=errorSamples.join(' | ')||'No API errors in this scan.';
+  $('status').textContent=`Updated ${new Date().toLocaleTimeString()} · ${result.done} checks · ${early.length} early · ${confirmed.length} confirmed`;
+ }catch(e){
+  $('status').textContent='Scan failed: '+e.message;
+  $('errorDetails').textContent=e.message;
+ }finally{busy=false;}
 }
 $('start').onclick=async()=>{
- if(running)return;running=true;await scan();
+ if(running)return;
+ running=true;
+ await scan();
  if(running){clearInterval(timer);timer=setInterval(scan,+$('refresh').value*60000);}
 };
-$('stop').onclick=()=>{running=false;clearInterval(timer);$('status').textContent='Scanner stopped. Last results remain visible.'};
-$('refresh').onchange=()=>{if(running){clearInterval(timer);timer=setInterval(scan,+$('refresh').value*60000);}};
+$('stop').onclick=()=>{
+ running=false;clearInterval(timer);
+ $('status').textContent='Scanner stopped. Last results remain visible.';
+};
+$('refresh').onchange=()=>{
+ if(running){clearInterval(timer);timer=setInterval(scan,+$('refresh').value*60000);}
+};
 </script>
 </body>
 </html>
